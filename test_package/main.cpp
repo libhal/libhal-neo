@@ -23,7 +23,7 @@
 
 int main()
 {
-  hal::neo::neo_replace_me bar;
+  return 0;
 }
 
 namespace boost {

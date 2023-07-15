@@ -21,6 +21,7 @@
 struct hardware_map
 {
   hal::serial* console;
+  hal::serial* gps;
   hal::steady_clock* clock;
   hal::callback<void()> reset;
 };

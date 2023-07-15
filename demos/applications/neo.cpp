@@ -14,7 +14,7 @@
 
 #include <libhal-util/serial.hpp>
 #include <libhal-util/steady_clock.hpp>
-
+#include <libhal-neo/neo.hpp>
 #include "../hardware_map.hpp"
 
 hal::status application(hardware_map& p_map)
@@ -24,12 +24,22 @@ hal::status application(hardware_map& p_map)
 
   auto& clock = *p_map.clock;
   auto& console = *p_map.console;
+  auto& gps = *p_map.gps;
 
-  hal::print(console, "Demo Application Starting...\n\n");
+  std::array<hal::byte, 8192> buffer{};
+
+  hal::print(console, "Initializing GPS...\n");
+  auto neoGPS = HAL_CHECK(hal::neo::neo_GPS::create(gps));
+  hal::print(console, "GPS created! \n");
 
   while (true) {
-    hal::delay(clock, 500ms);
-    hal::print(console, "Hello, world\n");
+    // Wait 1 second before reading response back
+    hal::delay(clock, 1000ms);
+    // Read response back from serial port
+    auto received = HAL_CHECK(neoGPS.read_gps(buffer)).data;
+
+    hal::print(console, "\n=================== GPS RESPONSE ===================n\n");
+    hal::print(console, received);
   }
 
   return hal::success();
