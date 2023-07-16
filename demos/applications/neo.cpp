@@ -26,7 +26,7 @@ hal::status application(hardware_map& p_map)
   auto& console = *p_map.console;
   auto& gps = *p_map.gps;
 
-  std::array<hal::byte, 8192> buffer{};
+  std::array<hal::byte, 512> buffer{};
 
   hal::print(console, "Initializing GPS...\n");
   auto neoGPS = HAL_CHECK(hal::neo::neo_GPS::create(gps));
@@ -36,10 +36,17 @@ hal::status application(hardware_map& p_map)
     // Wait 1 second before reading response back
     hal::delay(clock, 1000ms);
     // Read response back from serial port
-    auto received = HAL_CHECK(neoGPS.read_gps(buffer)).data;
+    auto received = HAL_CHECK(neoGPS.read_raw_gps()).data;
 
     hal::print(console, "\n=================== GPS RESPONSE ===================n\n");
     hal::print(console, received);
+
+    // // Echo back anything received
+    // hal::print(console, "\n=================== Data I Should Get ===================n\n");
+    // std::array<hal::byte, 512> read_buffer;
+    // auto data = HAL_CHECK(gps.read(read_buffer)).data;
+    // hal::print(console, data);
+
   }
 
   return hal::success();

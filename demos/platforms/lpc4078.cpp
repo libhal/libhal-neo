@@ -44,7 +44,7 @@ hal::result<hardware_map> initialize_platform()
 
   static std::array<hal::byte, 64> uart0_buffer{};
 
-  static std::array<hal::byte, 64> uart1_buffer{};
+  static std::array<hal::byte, 812> uart1_buffer{};
 
   // Get and initialize UART0 for UART based logging
   static auto uart0 = HAL_CHECK(hal::lpc40::uart::get(0,
@@ -56,7 +56,7 @@ hal::result<hardware_map> initialize_platform()
   static auto uart1 = HAL_CHECK(hal::lpc40::uart::get(1,
                                                       uart1_buffer,
                                                       hal::serial::settings{
-                                                        .baud_rate = 38400,
+                                                        .baud_rate = 9600,
                                                       }));
 
   return hardware_map{
