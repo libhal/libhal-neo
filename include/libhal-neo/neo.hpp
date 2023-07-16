@@ -25,13 +25,19 @@ namespace hal::neo {
 class neo_GPS
 {
 public:
+  struct gps_parsed_t
+  {
+    std::string latitude;
+    std::string longitude;
+  };
 
   [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
 
-  hal::result<serial::read_t> read_raw_gps();
+  hal::result<std::span<hal::byte>> read_raw_gps();
 
-    private : neo_GPS(hal::serial& p_serial);
+private:
+  neo_GPS(hal::serial& p_serial);
   hal::serial* m_serial;
-  static constexpr uint8_t gps_buffer_size = 512;
+  std::array<hal::byte, 512> gps_buffer;
 };
 }  // namespace hal::neo
