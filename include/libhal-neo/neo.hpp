@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <string_view>
 
+#include <libhal-util/streams.hpp>
 #include <libhal/functional.hpp>
 #include <libhal/serial.hpp>
 
@@ -33,11 +34,11 @@ public:
 
   [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
 
-  hal::result<std::span<hal::byte>> read_raw_gps();
+  hal::result<std::string_view> read_coordinates();
 
 private:
   neo_GPS(hal::serial& p_serial);
   hal::serial* m_serial;
-  std::array<hal::byte, 512> gps_buffer;
+  std::array<hal::byte, 512> m_gps_buffer;
 };
 }  // namespace hal::neo

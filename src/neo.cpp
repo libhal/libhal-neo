@@ -18,6 +18,7 @@
 #include <array>
 #include <span>
 
+#include <libhal-util/as_bytes.hpp>
 #include <libhal-util/serial.hpp>
 #include <libhal-util/streams.hpp>
 #include <libhal-util/timeout.hpp>
@@ -36,10 +37,25 @@ result<neo_GPS> neo_GPS::create(hal::serial& p_serial)
   return new_neo;
 }
 
-hal::result<std::span<hal::byte>> neo_GPS::read_raw_gps()
+hal::result<std::string_view> neo_GPS::read_coordinates()
 {
-  auto bytes_read_array = HAL_CHECK(m_serial->read(gps_buffer)).data;
-  return bytes_read_array;
+  // Setup
+  using namespace std::literals;
+
+  auto bytes_read_array = HAL_CHECK(m_serial->read(m_gps_buffer)).data;
+
+  auto start_of_line = hal::as_bytes("$GPGGA,"sv);
+  hal::stream::find start_of_line_finder(start_of_line);
+
+  auto end_of_line = hal::as_bytes("\n"sv);
+  hal::stream::fill_upto end_of_line_finder(end_of_line, m_gps_buffer);
+
+  auto remaining = bytes_read_array | start_of_line_finder | end_of_line_finder;
+
+  std::string_view remaining_str(
+    reinterpret_cast<const char*>(remaining.data()), remaining.size());
+
+  return remaining_str;
 }
 
 }  // namespace hal::neo

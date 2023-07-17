@@ -29,13 +29,22 @@ hal::status application(hardware_map& p_map)
   hal::print(console, "Initializing GPS...\n");
   auto neoGPS = HAL_CHECK(hal::neo::neo_GPS::create(gps));
   hal::print(console, "GPS created! \n");
+  hal::print(console, "***You may need to wait a few minutes before having a full GPS lock***\n");
+  
 
   while (true) {
     hal::delay(clock, 1000ms);
-    auto received = HAL_CHECK(neoGPS.read_raw_gps());
+    // auto raw_data = HAL_CHECK(neoGPS.read_raw_gps());
+    // hal::print(console, "\n=================== GPS RAW Data ===================\n");
+    // hal::print(console, raw_data);
 
-    hal::print(console, "\n=================== GPS RESPONSE ===================n\n");
-    hal::print(console, received);
+
+    auto coordinate_data = HAL_CHECK(neoGPS.read_coordinates());
+    hal::print(console, "\n=================== GPS Coordinate Data ===================\n");
+    hal::print(console, coordinate_data);
+
+
+
   }
 
   return hal::success();
