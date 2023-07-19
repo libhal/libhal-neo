@@ -21,13 +21,16 @@
 #include <libhal-util/as_bytes.hpp>
 #include <libhal-util/serial.hpp>
 #include <libhal-util/streams.hpp>
-#include <libhal-util/timeout.hpp>
+
+#include "neo_constants.hpp"
 
 namespace hal::neo {
 
 // constructor
 neo_GPS::neo_GPS(hal::serial& p_serial)
   : m_serial(&p_serial)
+  , start_of_line_finder(hal::as_bytes(start_of_line))
+  , end_of_line_finder(hal::as_bytes(end_of_line), m_gps_buffer)
 {
 }
 
@@ -37,25 +40,42 @@ result<neo_GPS> neo_GPS::create(hal::serial& p_serial)
   return new_neo;
 }
 
+
 hal::result<std::string_view> neo_GPS::read_coordinates()
 {
-  // Setup
-  using namespace std::literals;
+    using namespace std::literals;
 
-  auto bytes_read_array = HAL_CHECK(m_serial->read(m_gps_buffer)).data;
+    auto bytes_read_array = HAL_CHECK(m_serial->read(m_gps_buffer)).data;
 
-  auto start_of_line = hal::as_bytes("$GPGGA,"sv);
-  hal::stream::find start_of_line_finder(start_of_line);
+    auto start_of_line_found = bytes_read_array | start_of_line_finder;
+    auto end_of_line_found = start_of_line_found | end_of_line_finder;
 
-  auto end_of_line = hal::as_bytes("\n"sv);
-  hal::stream::fill_upto end_of_line_finder(end_of_line, m_gps_buffer);
+    std::string_view gps_data(
+        reinterpret_cast<const char*>(start_of_line_found.data()), 
+        end_of_line_found.data() - start_of_line_found.data());
 
-  auto remaining = bytes_read_array | start_of_line_finder | end_of_line_finder;
+    if (work_state::finished == end_of_line_finder.state()) {
+        start_of_line_finder = hal::stream::find(hal::as_bytes(start_of_line));
+        end_of_line_finder = hal::stream::fill_upto(hal::as_bytes(end_of_line), m_gps_buffer);
 
-  std::string_view remaining_str(
-    reinterpret_cast<const char*>(remaining.data()), remaining.size());
+        return hal::result<std::string_view>(gps_data);
+    }
+}
 
-  return remaining_str;
+
+hal::result<std::string_view> neo_GPS::build_output_string(const gps_parsed_t& gpsCoordinate) {
+    std::string output_string;
+    output_string += "Time: " + gpsCoordinate.time + '\n';
+    output_string += "Latitude: " + gpsCoordinate.latitude + " " + gpsCoordinate.latitude_dir + '\n';
+    output_string += "Longitude: " + gpsCoordinate.longitude + " " + gpsCoordinate.longitude_dir + '\n';
+    output_string += "Fix quality: " + std::to_string(gpsCoordinate.fix_quality) + '\n';
+    output_string += "Number of satellites: " + std::to_string(gpsCoordinate.num_of_satellites) + '\n';
+    output_string += "Horizontal dilution: " + std::to_string(gpsCoordinate.horizontal_dilution) + '\n';
+    output_string += "Altitude: " + std::to_string(gpsCoordinate.altitude) + " " + gpsCoordinate.altitude_units + '\n';
+    output_string += "Geoidal separation: " + std::to_string(gpsCoordinate.geoidal_separation) + " " + gpsCoordinate.separation_units + '\n';
+    output_string += "Age: " + gpsCoordinate.age + '\n';
+    output_string += "Checksum: " + gpsCoordinate.checksum;
+    return hal::result<std::string_view>(output_string);
 }
 
 }  // namespace hal::neo
