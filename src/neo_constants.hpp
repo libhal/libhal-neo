@@ -20,7 +20,7 @@ namespace hal::neo {
 using namespace std::literals;
 
     constexpr auto start_of_line = "$GPGGA,"sv;
-    constexpr auto end_of_line = "\n"sv;
+    constexpr auto end_of_line = "\r\n"sv;
     constexpr auto comma_delimiter = ","sv;
 
 }  // namespace hal::neo

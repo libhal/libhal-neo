@@ -35,9 +35,13 @@ hal::status application(hardware_map& p_map)
   while (true) {
     hal::delay(clock, 1000ms);
 
-    auto coordinate_data = HAL_CHECK(neoGPS.read_coordinates());
+    auto coordinate_data = HAL_CHECK(neoGPS.read_gps());
+    // auto lon_lat = HAL_CHECK(neoGPS.calculate_lon_lat(coordinate_data));
+    // auto raw_data = HAL_CHECK(neoGPS.read_raw_gps());
     hal::print(console, "\n=================== GPS Coordinate Data ===================\n");
     hal::print(console, coordinate_data);
+    // hal::print(console, "\n=================== GPS Raw Data ===================\n");
+    // hal::print(console, raw_data);
 
 
 
