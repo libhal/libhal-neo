@@ -29,38 +29,34 @@ class neo_GPS
 public:
   struct gps_parsed_t
   {
+    bool is_locked = false;
     float time;
     float latitude;
-    std::string latitude_direction;
+    char latitude_direction;
     float longitude;
-    std::string longitude_direction;
+    char longitude_direction;
     int fix_status;
     int satellites_used;
     float hdop;
     float altitude;
-    std::string altitude_units;
+    char altitude_units;
     float height_of_geoid;
-    std::string height_of_geoid_units;
-    std::string time_since_last_dgps_update;
-    std::string dgps_station_id_checksum;
+    char height_of_geoid_units;
+    char time_since_last_dgps_update;
+    char dgps_station_id_checksum[10];
   };
 
   [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
-
-  hal::result<std::string_view> read_gps();
-
-  hal::result<std::string> calculate_lon_lat(const gps_parsed_t& gps_data);
-
-  //  hal::result<std::string> gps_data_to_string();
+  hal::result<gps_parsed_t> read_raw_gps();
+  hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& gps_data);
+  hal::result<gps_parsed_t> read();
 
 private:
   neo_GPS(hal::serial& p_serial);
   hal::serial* m_serial;
   std::array<hal::byte, 512> m_gps_buffer;
-  std::array<hal::byte, 20> m_gps_parsed_buffer;
   gps_parsed_t m_gps_data;
-  std::string m_gps_data_view;
-  hal::stream::find start_of_line_finder;
-  hal::stream::fill_upto end_of_line_finder;
+  hal::stream::find m_start_of_line_finder;
+  hal::stream::find m_end_of_line_finder;
 };
 }  // namespace hal::neo
