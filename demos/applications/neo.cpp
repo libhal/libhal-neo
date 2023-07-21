@@ -37,9 +37,8 @@ hal::status application(hardware_map& p_map)
     hal::delay(clock, 1000ms);
     auto GPS = HAL_CHECK(neoGPS.read());
     if (!GPS.is_locked) {
-      hal::print(console, "GPS is not locked yet. Please wait. May take upto 3 minutes\n");
+      hal::print(console, "GPS not locked. Relocating for a better signal might help. Locking may take up to 3 minutes.\n");
     } else {
-
       hal::print(
         console,
         "\n=================== GPS Coordinate Data ===================\n");
