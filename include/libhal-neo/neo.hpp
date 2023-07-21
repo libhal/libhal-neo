@@ -18,6 +18,8 @@
 #include <cstdint>
 #include <string_view>
 
+#include <libhal-util/as_bytes.hpp>
+#include <libhal-util/streams.hpp>
 #include <libhal/functional.hpp>
 #include <libhal/serial.hpp>
 
@@ -25,44 +27,36 @@ namespace hal::neo {
 class neo_GPS
 {
 public:
-  struct read_t
+  struct gps_parsed_t
   {
-    // The buffer containing the bytes read from the server
-    std::span<hal::byte> data;
-  };
-
-  struct write_t
-  {
-    // The buffer that was written to the server
-    std::span<const hal::byte> data;
+    bool is_locked = false;
+    float time;
+    float latitude;
+    char latitude_direction;
+    float longitude;
+    char longitude_direction;
+    int fix_status;
+    int satellites_used;
+    float hdop;
+    float altitude;
+    char altitude_units;
+    float height_of_geoid;
+    char height_of_geoid_units;
+    char time_since_last_dgps_update;
+    char dgps_station_id_checksum[10];
   };
 
   [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
-
-  hal::result<neo_GPS::read_t> read_gps(std::span<hal::byte> p_buffer);
+  hal::result<gps_parsed_t> read_raw_gps();
+  hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& gps_data);
+  hal::result<gps_parsed_t> read();
 
 private:
-  class packet_manager
-  {
-  public:
-    packet_manager();
-    void find(hal::serial& p_serial);
-    bool is_complete_header();
-    std::uint16_t packet_length();
-    hal::result<std::span<hal::byte>> read_packet(
-      hal::serial& p_serial,
-      std::span<hal::byte> p_buffer);
-    void reset();
-    void set_state(std::uint8_t p_state);
-
-  private:
-    void update_state(hal::byte p_byte);
-    std::uint8_t m_state;
-    std::uint16_t m_length;
-  };
-
   neo_GPS(hal::serial& p_serial);
   hal::serial* m_serial;
-  packet_manager m_packet_manager;
+  std::array<hal::byte, 512> m_gps_buffer;
+  gps_parsed_t m_gps_data;
+  hal::stream::find m_start_of_line_finder;
+  hal::stream::find m_end_of_line_finder;
 };
 }  // namespace hal::neo

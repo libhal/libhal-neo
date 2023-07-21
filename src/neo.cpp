@@ -1,21 +1,35 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <libhal-neo/neo.hpp>
 
 #include <algorithm>
 #include <array>
 #include <span>
 
+#include <libhal-util/as_bytes.hpp>
 #include <libhal-util/serial.hpp>
 #include <libhal-util/streams.hpp>
-#include <libhal-util/timeout.hpp>
 
-// #include "util.hpp"
+#include "neo_constants.hpp"
 
 namespace hal::neo {
 
-// constructor
 neo_GPS::neo_GPS(hal::serial& p_serial)
   : m_serial(&p_serial)
-  , m_packet_manager{}
+  , m_start_of_line_finder(hal::as_bytes(start_of_line))
+  , m_end_of_line_finder(hal::as_bytes(end_of_line))
 {
 }
 
@@ -25,170 +39,80 @@ result<neo_GPS> neo_GPS::create(hal::serial& p_serial)
   return new_neo;
 }
 
-namespace _packet_manager {
-enum state : std::uint8_t
+hal::result<neo_GPS::gps_parsed_t> neo_GPS::read_raw_gps()
 {
-  expect_plus,
-  expect_i,
-  expect_p,
-  expect_d,
-  expect_comma,
-  expect_digit1,
-  expect_digit2,
-  expect_digit3,
-  expect_digit4,
-  expect_colon,
-  header_complete
-};
+  using namespace std::literals;
+
+  auto bytes_read_array = HAL_CHECK(m_serial->read(m_gps_buffer)).data;
+
+  auto start_of_line_found = bytes_read_array | m_start_of_line_finder;
+  auto end_of_line_found = start_of_line_found | m_end_of_line_finder;
+
+  std::string_view gps_data(
+    reinterpret_cast<const char*>(start_of_line_found.data()),
+    end_of_line_found.data() - start_of_line_found.data());
+
+  int ret = sscanf(gps_data.data(),
+                   ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c,,%s,",
+                   &m_gps_data.time,
+                   &m_gps_data.latitude,
+                   &m_gps_data.latitude_direction,
+                   &m_gps_data.longitude,
+                   &m_gps_data.longitude_direction,
+                   &m_gps_data.fix_status,
+                   &m_gps_data.satellites_used,
+                   &m_gps_data.hdop,
+                   &m_gps_data.altitude,
+                   &m_gps_data.altitude_units,
+                   &m_gps_data.height_of_geoid,
+                   &m_gps_data.height_of_geoid_units,
+                   &m_gps_data.time_since_last_dgps_update,
+                   &m_gps_data.dgps_station_id_checksum);
+
+  m_gps_data.is_locked = (ret < 13) ? false : true;
+
+  m_start_of_line_finder = hal::stream::find(hal::as_bytes(start_of_line));
+  m_end_of_line_finder = hal::stream::find(hal::as_bytes(end_of_line));
+
+  return hal::result<neo_GPS::gps_parsed_t>(m_gps_data);
 }
 
-neo_GPS::packet_manager::packet_manager()
-  : m_state(_packet_manager::state::expect_plus)
-  , m_length(0)
+hal::result<neo_GPS::gps_parsed_t> neo_GPS::calculate_lon_lat(
+  const neo_GPS::gps_parsed_t& p_gps_data)
 {
-}
 
-void neo_GPS::packet_manager::find(hal::serial& p_serial)
-{
-  if (is_complete_header()) {
-    return;
+  neo_GPS::gps_parsed_t modified_data = p_gps_data;
+  char lon_dir = modified_data.longitude_direction;
+  char lat_dir = modified_data.latitude_direction;
+  float lon = modified_data.longitude;
+  float lat = modified_data.latitude;
+
+  if (lon_dir == 'W') {
+    lon = -lon;
+  }
+  if (lat_dir == 'S') {
+    lat = -lat;
   }
 
-  std::array<hal::byte, 1> byte;
-  auto result = p_serial.read(byte);
-  while (result.has_value() && result.value().data.size() != 0) {
-    update_state(byte[0]);
-    if (is_complete_header()) {
-      return;
-    }
-    result = p_serial.read(byte);
-  }
+  float lon_intpart = static_cast<int>(lon / 100);
+  float lon_fractpart = lon - (lon_intpart * 100);
+  lon = lon_intpart + (lon_fractpart / 60);
+
+  float lat_intpart = static_cast<int>(lat / 100);
+  float lat_fractpart = lat - (lat_intpart * 100);
+  lat = lat_intpart + (lat_fractpart / 60);
+
+  modified_data.longitude = lon;
+  modified_data.latitude = lat;
+
+  return hal::result<neo_GPS::gps_parsed_t>(modified_data);
 }
 
-void neo_GPS::packet_manager::set_state(std::uint8_t p_state)
+hal::result<neo_GPS::gps_parsed_t> neo_GPS::read()
 {
-  m_state = p_state;
-}
-
-void neo_GPS::packet_manager::update_state(hal::byte p_byte)
-{
-  char c = static_cast<char>(p_byte);
-  switch (m_state) {
-    case _packet_manager::state::expect_plus:
-      if (c == '+') {
-        m_state = _packet_manager::state::expect_i;
-      }
-      break;
-    case _packet_manager::state::expect_i:
-      if (c == 'I') {
-        m_state = _packet_manager::state::expect_p;
-      } else {
-        m_state = _packet_manager::state::expect_plus;
-      }
-      break;
-    case _packet_manager::state::expect_p:
-      if (c == 'P') {
-        m_state = _packet_manager::state::expect_d;
-      } else {
-        m_state = _packet_manager::state::expect_plus;
-      }
-      break;
-    case _packet_manager::state::expect_d:
-      if (c == 'D') {
-        m_state = _packet_manager::state::expect_comma;
-      } else {
-        m_state = _packet_manager::state::expect_plus;
-      }
-      break;
-    case _packet_manager::state::expect_comma:
-      if (c == ',') {
-        m_state = _packet_manager::state::expect_digit1;
-        m_length = 0;  // Reset the length because we're about to parse it
-      } else {
-        m_state = _packet_manager::state::expect_plus;
-      }
-      break;
-    case _packet_manager::state::expect_digit1:
-    case _packet_manager::state::expect_digit2:
-    case _packet_manager::state::expect_digit3:
-    case _packet_manager::state::expect_digit4:
-      if (isdigit(c)) {
-        m_length = m_length * 10 + (c - '0');  // Accumulate the length
-        m_state += 1;
-      } else if (c == ':') {
-        m_state = _packet_manager::state::header_complete;
-      } else {
-        // It's not a digit or a ':', so this is an error
-        m_state = _packet_manager::state::expect_plus;
-      }
-      break;
-    case _packet_manager::state::expect_colon:
-      if (c == ':') {
-        m_state = _packet_manager::state::header_complete;
-      } else {
-        m_state = _packet_manager::state::expect_plus;
-      }
-      break;
-    default:
-      m_state = _packet_manager::state::expect_plus;
-  }
-}
-
-bool neo_GPS::packet_manager::is_complete_header()
-{
-  return m_state == _packet_manager::state::header_complete;
-}
-
-std::uint16_t neo_GPS::packet_manager::packet_length()
-{
-  return is_complete_header() ? m_length : 0;
-}
-
-
- void neo_GPS::packet_manager::reset()
-{
-  m_state = _packet_manager::state::expect_plus;
-  m_length = 0;
-}
-
-
-hal::result<std::span<hal::byte>> neo_GPS::packet_manager::read_packet(
-  hal::serial& p_serial,
-  std::span<hal::byte> p_buffer)
-{
-  if (!is_complete_header()) {
-    return p_buffer.first(0);
-  }
-
-  auto buffer_size = static_cast<std::uint16_t>(p_buffer.size());
-  auto bytes_capable_of_reading = std::min(m_length, buffer_size);
-  auto subspan = p_buffer.first(bytes_capable_of_reading);
-  auto bytes_read_array = HAL_CHECK(p_serial.read(subspan)).data;
-
-  m_length = m_length - bytes_read_array.size();
-
-  if (m_length == 0) {
-    reset();
-  }
-
-  return bytes_read_array;
-}
-
-
-hal::result<neo_GPS::read_t> neo_GPS::read_gps(std::span<hal::byte> p_buffer)
-{
-  size_t bytes_read = 0;
-  auto buffer = p_buffer;
-  auto read = std::span<hal::byte>();
-
-  do {
-    m_packet_manager.find(*m_serial);
-    read = HAL_CHECK(m_packet_manager.read_packet(*m_serial, buffer));
-    bytes_read += read.size();
-    buffer = buffer.subspan(read.size());
-  } while (read.size() != 0 && buffer.size() != 0);
-
-  return read_t{ .data = p_buffer.first(bytes_read) };
+  auto gps_data = HAL_CHECK(read_raw_gps());
+  auto lon_lat = HAL_CHECK(calculate_lon_lat(gps_data));
+  return hal::result<neo_GPS::gps_parsed_t>(lon_lat);
 }
 
 }  // namespace hal::neo

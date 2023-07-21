@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "../hardware_map.hpp"
+#include <libhal-neo/neo.hpp>
 #include <libhal-util/serial.hpp>
 #include <libhal-util/steady_clock.hpp>
-#include <libhal-neo/neo.hpp>
-#include "../hardware_map.hpp"
 
 hal::status application(hardware_map& p_map)
 {
@@ -26,20 +26,32 @@ hal::status application(hardware_map& p_map)
   auto& console = *p_map.console;
   auto& gps = *p_map.gps;
 
-  std::array<hal::byte, 8192> buffer{};
-
   hal::print(console, "Initializing GPS...\n");
   auto neoGPS = HAL_CHECK(hal::neo::neo_GPS::create(gps));
   hal::print(console, "GPS created! \n");
+  hal::print(
+    console,
+    "***You may need to wait a few minutes before having a full GPS lock***\n");
 
   while (true) {
-    // Wait 1 second before reading response back
     hal::delay(clock, 1000ms);
-    // Read response back from serial port
-    auto received = HAL_CHECK(neoGPS.read_gps(buffer)).data;
+    auto GPS = HAL_CHECK(neoGPS.read());
+    if (!GPS.is_locked) {
+      hal::print(console, "GPS is not locked yet. Please wait. May take upto 3 minutes\n");
+    } else {
 
-    hal::print(console, "\n=================== GPS RESPONSE ===================n\n");
-    hal::print(console, received);
+      hal::print(
+        console,
+        "\n=================== GPS Coordinate Data ===================\n");
+      hal::print<128>(console,
+                      "Time: %f\nLatitude: %f\nLongitude: %f\nNumber of "
+                      "satellites seen: %d\nAltitude: %f meters",
+                      GPS.time,
+                      GPS.latitude,
+                      GPS.longitude,
+                      GPS.satellites_used,
+                      GPS.altitude);
+    }
   }
 
   return hal::success();
