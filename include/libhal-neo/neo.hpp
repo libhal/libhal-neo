@@ -56,7 +56,5 @@ private:
   hal::serial* m_serial;
   std::array<hal::byte, 512> m_gps_buffer;
   gps_parsed_t m_gps_data;
-  hal::stream::find m_start_of_line_finder;
-  hal::stream::find m_end_of_line_finder;
 };
 }  // namespace hal::neo
