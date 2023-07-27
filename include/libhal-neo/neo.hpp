@@ -23,8 +23,10 @@
 #include <libhal/functional.hpp>
 #include <libhal/serial.hpp>
 
+
 namespace hal::neo {
-class neo_GPS
+
+class nmea_parser
 {
 public:
   struct gps_parsed_t
@@ -46,15 +48,37 @@ public:
     char dgps_station_id_checksum[10];
   };
 
-  [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
-  hal::result<gps_parsed_t> read_raw_gps();
-  hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& gps_data);
+  enum state : std::uint8_t
+  {
+    none = 0,
+    gga,
+    gll,
+    gsa,
+    gsv,
+    rmc,
+    vtg,
+    zda,
+  };
+
+  [[nodiscard]] static result<nmea_parser> create(hal::serial& p_serial);
+  hal::result<gps_parsed_t> get();
+  hal::result<gps_parsed_t> parse(std::span<const hal::byte> remaining, const char* format);
+  hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& p_gps_data);
   hal::result<gps_parsed_t> read();
 
 private:
-  neo_GPS(hal::serial& p_serial);
+  nmea_parser(hal::serial& p_serial);
+  void reset();
   hal::serial* m_serial;
-  std::array<hal::byte, 512> m_gps_buffer;
+  hal::stream::find m_gga{ std::span<hal::byte>() };
+  hal::stream::find m_gll{ std::span<hal::byte>() };
+  hal::stream::find m_gsa{ std::span<hal::byte>() };
+  hal::stream::find m_gsv{ std::span<hal::byte>() };
+  hal::stream::find m_rmc{ std::span<hal::byte>() };
+  hal::stream::find m_vtg{ std::span<hal::byte>() };
+  hal::stream::find m_zda{ std::span<hal::byte>() };
+  state m_state = state::none;
+  std::array<hal::byte, 32> m_buffer{};
   gps_parsed_t m_gps_data;
 };
 }  // namespace hal::neo

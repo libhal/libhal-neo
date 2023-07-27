@@ -27,7 +27,7 @@ hal::status application(hardware_map& p_map)
   auto& gps = *p_map.gps;
 
   hal::print(console, "Initializing GPS...\n");
-  auto neoGPS = HAL_CHECK(hal::neo::neo_GPS::create(gps));
+  auto neoGPS = HAL_CHECK(hal::neo::nmea_parser::create(gps));
   hal::print(console, "GPS created! \n");
   hal::print(
     console,

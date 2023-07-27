@@ -22,5 +22,13 @@ using namespace std::literals;
     constexpr auto start_of_line = "$GPGGA,"sv;
     constexpr auto end_of_line = "\r\n"sv;
     constexpr auto comma_delimiter = ","sv;
+    const char* GPGGA_FORMAT = ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c,,%s,";
+    const char* GPGLL_FORMAT = "..."; // Fill with appropriate format
+    const char* GPGSA_FORMAT = "..."; // Fill with appropriate format
+    const char* GPGSV_FORMAT = "..."; // Fill with appropriate format
+    const char* GPRMC_FORMAT = "..."; // Fill with appropriate format
+    const char* GPVTG_FORMAT = "..."; // Fill with appropriate format
+    const char* GPZDA_FORMAT = "..."; // Fill with appropriate format
+
 
 }  // namespace hal::neo
