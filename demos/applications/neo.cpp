@@ -28,6 +28,11 @@ hal::status application(hardware_map& p_map)
 
   hal::print(console, "Initializing GPS...\n");
   auto neoGPS = HAL_CHECK(hal::neo::nmea_parser::create(gps));
+  auto gga_parser = HAL_CHECK(hal::neo::GGA_Sentence::create());
+  auto gsa_parser = HAL_CHECK(hal::neo::GSA_Sentence::create());
+  auto gsv_parser = HAL_CHECK(hal::neo::GSV_Sentence::create());
+  auto rmc_parser = HAL_CHECK(hal::neo::RMC_Sentence::create());
+
   hal::print(console, "GPS created! \n");
   hal::print(
     console,
@@ -35,22 +40,57 @@ hal::status application(hardware_map& p_map)
 
   while (true) {
     hal::delay(clock, 1000ms);
-    auto GPS = HAL_CHECK(neoGPS.read());
-    if (!GPS.is_locked) {
-      hal::print(console, "GPS not locked. Relocating for a better signal might help. Locking may take up to 3 minutes.\n");
-    } else {
-      hal::print(
-        console,
-        "\n=================== GPS Coordinate Data ===================\n");
-      hal::print<128>(console,
-                      "Time: %f\nLatitude: %f\nLongitude: %f\nNumber of "
-                      "satellites seen: %d\nAltitude: %f meters",
-                      GPS.time,
-                      GPS.latitude,
-                      GPS.longitude,
-                      GPS.satellites_used,
-                      GPS.altitude);
-    }
+    auto nmea_reader = neoGPS.read();
+    auto gga_data = gga_parser.read(nmea_reader.value());
+    auto gsa_data = gsa_parser.read(nmea_reader.value());
+    auto gsv_data = gsv_parser.read(nmea_reader.value());
+    auto rmc_data = rmc_parser.read(nmea_reader.value());
+
+    auto GGA = gga_data.value();
+    auto GSA = gsa_data.value();
+    auto GSV = gsv_data.value();
+    auto RMC = rmc_data.value();
+    hal::print(
+      console,
+      "\n=================== GPS Coordinate Data ===================\n");
+    hal::print<128>(console,
+                    "Time: %f\nLatitude: %f\nLongitude: %f\nNumber of "
+                    "satellites seen: %d\nAltitude: %f meters",
+                    GGA.time,
+                    GGA.latitude,
+                    GGA.longitude,
+                    GGA.satellites_used,
+                    GGA.altitude);
+
+    hal::print(console,
+               "\n=================== GPS Status Data ===================\n");
+    hal::print<128>(console,
+                    "Fix type: %d\nFix mode: %c\nPDOP: %f\nHDOP: %f\nVDOP: "
+                    "%f\n",
+                    GSA.fix_type,
+                    GSA.mode,
+                    GSA.pdop,
+                    GSA.hdop,
+                    GSA.vdop);
+
+    hal::print(
+      console,
+      "\n=================== GPS Satellite Data ===================\n");
+    hal::print<128>(console,
+                    "Satellites in view: %d\nElevation: %d\nAzimuth: %d\nSNR: "
+                    "%d\n",
+                    GSV.satellites_in_view,
+                    GSV.elevation,
+                    GSV.azimuth,
+                    GSV.snr);
+
+    hal::print(console,
+               "\n=================== GPS Speed Data ===================\n");
+    hal::print<128>(console,
+                    "Speed: %f\nTrack angle: %f\nMagnetic direction: %c\n",
+                    RMC.speed,
+                    RMC.track_angle,
+                    RMC.magnetic_direction);
   }
 
   return hal::success();

@@ -12,23 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #pragma once
 
 namespace hal::neo {
 
 using namespace std::literals;
 
-    constexpr auto start_of_line = "$GPGGA,"sv;
-    constexpr auto end_of_line = "\r\n"sv;
-    constexpr auto comma_delimiter = ","sv;
-    const char* GPGGA_FORMAT = ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c,,%s,";
-    const char* GPGLL_FORMAT = "..."; // Fill with appropriate format
-    const char* GPGSA_FORMAT = "..."; // Fill with appropriate format
-    const char* GPGSV_FORMAT = "..."; // Fill with appropriate format
-    const char* GPRMC_FORMAT = "..."; // Fill with appropriate format
-    const char* GPVTG_FORMAT = "..."; // Fill with appropriate format
-    const char* GPZDA_FORMAT = "..."; // Fill with appropriate format
+constexpr auto gga_start_of_line = "GGA,"sv;
+constexpr auto gsa_start_of_line = "GSA,"sv;
+constexpr auto gsv_start_of_line = "GSV,"sv;
+constexpr auto rmc_start_of_line = "RMC,"sv;
 
+constexpr auto end_of_line = "\r\n"sv;
+
+const char* GGA_FORMAT = ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c,,%s,";
+const char* GSA_FORMAT = ",%c,%d,%d,%d,%d,%d,%d,%d,%d,%d,,,,,,,,%f,%f,%f,*";
+const char* GSV_FORMAT = ",%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,*";
+const char* RMC_FORMAT = ",%f,%c,%f,%c,%f,%c,%f,%f,%d,,,,%c*";
 
 }  // namespace hal::neo
