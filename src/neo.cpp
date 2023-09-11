@@ -43,8 +43,8 @@ hal::result<neo_GPS::gps_parsed_t> neo_GPS::read_raw_gps()
     using namespace std::literals;
 
     auto bytes_read_array = HAL_CHECK(m_serial->read(m_gps_buffer)).data;
-    auto start_of_line_finder = hal::stream::find(hal::as_bytes(start_of_line));
-    auto end_of_line_finder = hal::stream::find(hal::as_bytes(end_of_line));
+    auto start_of_line_finder = hal::stream_find(hal::as_bytes(start_of_line));
+    auto end_of_line_finder = hal::stream_find(hal::as_bytes(end_of_line));
 
     auto start_of_line_found = bytes_read_array | start_of_line_finder;
     auto end_of_line_found = start_of_line_found | end_of_line_finder;
