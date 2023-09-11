@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <string_view>
 
+#include <libhal-neo/nmea_parser.hpp>
 #include <libhal-util/as_bytes.hpp>
 #include <libhal-util/streams.hpp>
 #include <libhal/functional.hpp>
@@ -25,9 +26,19 @@
 
 namespace hal::neo {
 
-class GGA_Sentence
+struct nmea_parse_t
+{
+  std::span<const hal::byte> remaining;
+  bool end_of_token_found;
+};
+
+nmea_parse_t parse(std::span<nmea_parser*> p_parsers,
+                   std::span<const hal::byte> p_data);
+
+class GGA_Sentence : public nmea_parser
 {
 public:
+  GGA_Sentence();
   struct gga_data_t
   {
     bool is_locked = false;
@@ -46,20 +57,21 @@ public:
     char time_since_last_dgps_update;
     char dgps_station_id_checksum[10];
   };
-
-  [[nodiscard]] static result<GGA_Sentence> create();
-  hal::result<gga_data_t> parse(std::span<hal::byte>& bytes_read_array);
-  hal::result<gga_data_t> read(std::span<hal::byte>& bytes_read_array);
-  hal::result<gga_data_t> calculate_lon_lat(const gga_data_t& p_gps_data);
+  std::span<const hal::byte> parse(std::span<const hal::byte> p_data) override;
+  state_t state() override;
+  void reset() override;
+  gga_data_t read();
+  gga_data_t calculate_lon_lat(const gga_data_t& p_gps_data);
 
 private:
-  GGA_Sentence();
   gga_data_t m_gga_data;
+  nmea_parser::state_t m_state;
 };
 
-class GSA_Sentence
+class GSA_Sentence : public nmea_parser
 {
 public:
+  GSA_Sentence();
   struct gsa_data_t
   {
     char mode;
@@ -69,19 +81,20 @@ public:
     float hdop;
     float vdop;
   };
-
-  [[nodiscard]] static result<GSA_Sentence> create();
-  hal::result<gsa_data_t> parse(std::span<hal::byte>& bytes_read_array);
-  hal::result<gsa_data_t> read(std::span<hal::byte>& bytes_read_array);
+  std::span<const hal::byte> parse(std::span<const hal::byte> p_data) override;
+  state_t state() override;
+  void reset() override;
+  gsa_data_t read();
 
 private:
-  GSA_Sentence();
   gsa_data_t m_gsa_data;
+  nmea_parser::state_t m_state;
 };
 
-class GSV_Sentence
+class GSV_Sentence : public nmea_parser
 {
 public:
+  GSV_Sentence();
   struct satellite_data_t
   {
     int number_of_messages;
@@ -92,21 +105,25 @@ public:
     int azimuth;
     int snr;
   };
-
-  [[nodiscard]] static result<GSV_Sentence> create();
-  hal::result<satellite_data_t> parse(std::span<hal::byte>& bytes_read_array);
-  hal::result<satellite_data_t> read(std::span<hal::byte>& bytes_read_array);
+  std::span<const hal::byte> parse(std::span<const hal::byte> p_data) override;
+  state_t state() override;
+  void reset() override;
+  satellite_data_t read();
 
 private:
-  GSV_Sentence();
   satellite_data_t m_satellite_data;
+  nmea_parser::state_t m_state;
 };
 
-class RMC_Sentence
+class RMC_Sentence : public nmea_parser
 {
 public:
+  RMC_Sentence();
   struct rmc_data_t
   {
+
+    int reading_status = 0;
+
     float time;
     char status;
     float latitude;
@@ -119,26 +136,14 @@ public:
     float magnetic_variation;
     char magnetic_direction;
   };
-
-  [[nodiscard]] static result<RMC_Sentence> create();
-  hal::result<rmc_data_t> parse(std::span<hal::byte>& bytes_read_array);
-  hal::result<rmc_data_t> read(std::span<hal::byte>& bytes_read_array);
+  std::span<const hal::byte> parse(std::span<const hal::byte> p_data) override;
+  state_t state() override;
+  void reset() override;
+  rmc_data_t read();
 
 private:
-  RMC_Sentence();
   rmc_data_t m_rmc_data;
-};
-
-class nmea_parser
-{
-public:
-  [[nodiscard]] static result<nmea_parser> create(hal::serial& p_serial);
-  hal::result<std::span<hal::byte>> read();
-
-private:
-  nmea_parser(hal::serial& p_serial);
-  hal::serial* m_serial;
-  std::array<hal::byte, 512> m_gps_buffer{};
+  nmea_parser::state_t m_state;
 };
 
 }  // namespace hal::neo

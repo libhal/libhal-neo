@@ -28,9 +28,20 @@
 
 namespace hal::neo {
 
-nmea_parser::nmea_parser(hal::serial& p_serial)
-  : m_serial(&p_serial)
+nmea_parse_t parse(std::span<nmea_parser*> p_parsers,
+                   std::span<const hal::byte> p_data)
 {
+  bool end_token_found = false;
+
+  if (!p_data.empty()) {
+    for (auto& parser : p_parsers) {
+      if (parser->state() == nmea_parser::state_t::inactive) {
+        p_data = parser->parse(p_data);
+      }
+    }
+  }
+
+  return { p_data, end_token_found };
 }
 
 GGA_Sentence::GGA_Sentence()
@@ -49,81 +60,138 @@ RMC_Sentence::RMC_Sentence()
 {
 }
 
-result<nmea_parser> nmea_parser::create(hal::serial& p_serial)
+nmea_parser::state_t GGA_Sentence::state()
 {
-  nmea_parser new_nmea_parser(p_serial);
-  return new_nmea_parser;
+  return m_state;
 }
 
-result<GGA_Sentence> GGA_Sentence::create()
+nmea_parser::state_t GSA_Sentence::state()
 {
-  GGA_Sentence new_GGA_Sentence;
-  return new_GGA_Sentence;
+  return m_state;
 }
 
-result<GSA_Sentence> GSA_Sentence::create()
+nmea_parser::state_t GSV_Sentence::state()
 {
-  GSA_Sentence new_GSA_Sentence;
-  return new_GSA_Sentence;
+  return m_state;
 }
 
-result<GSV_Sentence> GSV_Sentence::create()
+nmea_parser::state_t RMC_Sentence::state()
 {
-  GSV_Sentence new_GSV_Sentence;
-  return new_GSV_Sentence;
+  return m_state;
 }
 
-result<RMC_Sentence> RMC_Sentence::create()
+void GGA_Sentence::reset()
 {
-  RMC_Sentence new_RMC_Sentence;
-  return new_RMC_Sentence;
+  m_state = state_t::inactive;
 }
 
-hal::result<std::span<hal::byte>> nmea_parser::read()
+void GSA_Sentence::reset()
 {
-  auto bytes_read_array = HAL_CHECK(m_serial->read(m_gps_buffer)).data;
-  return hal::result<std::span<hal::byte>>(bytes_read_array);
+  m_state = state_t::inactive;
 }
 
-hal::result<GGA_Sentence::gga_data_t> GGA_Sentence::parse(
-  std::span<hal::byte>& bytes_read_array)
+void GSV_Sentence::reset()
+{
+  m_state = state_t::inactive;
+}
+
+void RMC_Sentence::reset()
+{
+  m_state = state_t::inactive;
+}
+
+std::span<const hal::byte> GGA_Sentence::parse(
+  std::span<const hal::byte> p_data)
 {
   using namespace std::literals;
+  m_state = state_t::active;
 
   auto start_of_line_finder =
     hal::stream::find(hal::as_bytes(gga_start_of_line));
   auto end_of_line_finder = hal::stream::find(hal::as_bytes(end_of_line));
 
-  auto start_of_line_found = bytes_read_array | start_of_line_finder;
-  auto end_of_line_found = start_of_line_found | end_of_line_finder;
+  auto start_of_line_found = p_data | start_of_line_finder;
+  auto remaining_data = start_of_line_found | end_of_line_finder;
 
   std::string_view gga_data(
     reinterpret_cast<const char*>(start_of_line_found.data()),
-    end_of_line_found.data() - start_of_line_found.data());
+    remaining_data.data() - start_of_line_found.data());
 
-  int ret = sscanf(gga_data.data(),
-                   GGA_FORMAT,
-                   &m_gga_data.time,
-                   &m_gga_data.latitude,
-                   &m_gga_data.latitude_direction,
-                   &m_gga_data.longitude,
-                   &m_gga_data.longitude_direction,
-                   &m_gga_data.fix_status,
-                   &m_gga_data.satellites_used,
-                   &m_gga_data.hdop,
-                   &m_gga_data.altitude,
-                   &m_gga_data.altitude_units,
-                   &m_gga_data.height_of_geoid,
-                   &m_gga_data.height_of_geoid_units,
-                   &m_gga_data.time_since_last_dgps_update,
-                   &m_gga_data.dgps_station_id_checksum);
+  const char* p = gga_data.data();
+  int state = 0;
+  char temp[32];
+  int index = 0;
 
-  m_gga_data.is_locked = (ret < 10) ? false : true;
+  while (*p) {
+    if (*p == ',') {
+      temp[index] = '\0';
 
-  return hal::result<GGA_Sentence::gga_data_t>(m_gga_data);
+      switch (state) {
+        case 0:  // time
+          m_gga_data.time = atof(temp);
+          break;
+        case 1:  // latitude
+          m_gga_data.latitude = atof(temp);
+          break;
+        case 2:  // latitude direction
+          m_gga_data.latitude_direction = temp[0];
+          break;
+        case 3:  // longitude
+          m_gga_data.longitude = atof(temp);
+          break;
+        case 4:  // longitude direction
+          m_gga_data.longitude_direction = temp[0];
+          break;
+        case 5:  // fix status
+          m_gga_data.fix_status = atoi(temp);
+          break;
+        case 6:  // satellites used
+          m_gga_data.satellites_used = atoi(temp);
+          break;
+        case 7:  // hdop
+          m_gga_data.hdop = atof(temp);
+          break;
+        case 8:  // altitude
+          m_gga_data.altitude = atof(temp);
+          break;
+        case 9:  // altitude units
+          m_gga_data.altitude_units = temp[0];
+          break;
+        case 10:  // height of geoid
+          m_gga_data.height_of_geoid = atof(temp);
+          break;
+        case 11:  // height of geoid units
+          m_gga_data.height_of_geoid_units = temp[0];
+          break;
+        case 12:  // time since last dgps update
+          m_gga_data.time_since_last_dgps_update = atof(
+            temp);  // this might need to be changed if the format isn't a float
+          break;
+        case 13:  // dgps station id checksum
+          strncpy(m_gga_data.dgps_station_id_checksum,
+                  temp,
+                  9);  // assuming the 10th character is for null-termination
+          m_gga_data.dgps_station_id_checksum[9] =
+            '\0';  // ensure null-termination
+          break;
+        default:  // handle possible error
+          break;
+      }
+
+      state++;
+      index = 0;
+    } else {
+      temp[index++] = *p;
+    }
+    p++;
+  }
+
+  m_gga_data.is_locked = (state < 10) ? false : true;
+
+  return std::span<const hal::byte>(p_data);
 }
 
-hal::result<GGA_Sentence::gga_data_t> GGA_Sentence::calculate_lon_lat(
+GGA_Sentence::gga_data_t GGA_Sentence::calculate_lon_lat(
   const GGA_Sentence::gga_data_t& p_gps_data)
 {
 
@@ -151,32 +219,31 @@ hal::result<GGA_Sentence::gga_data_t> GGA_Sentence::calculate_lon_lat(
   modified_data.longitude = lon;
   modified_data.latitude = lat;
 
-  return hal::result<GGA_Sentence::gga_data_t>(modified_data);
+  return GGA_Sentence::gga_data_t(modified_data);
 }
 
-hal::result<GGA_Sentence::gga_data_t> GGA_Sentence::read(
-  std::span<hal::byte>& bytes_read_array)
+GGA_Sentence::gga_data_t GGA_Sentence::read()
 {
-  auto gga_data = HAL_CHECK(parse(bytes_read_array));
-  auto data = HAL_CHECK(calculate_lon_lat(gga_data));
-  return hal::result<GGA_Sentence::gga_data_t>(data);
+  auto data = calculate_lon_lat(m_gga_data);
+  return GGA_Sentence::gga_data_t(data);
 }
 
-hal::result<GSA_Sentence::gsa_data_t> GSA_Sentence::parse(
-  std::span<hal::byte>& bytes_read_array)
+std::span<const hal::byte> GSA_Sentence::parse(
+  std::span<const hal::byte> p_data)
 {
   using namespace std::literals;
+  m_state = state_t::active;
 
   auto start_of_line_finder =
     hal::stream::find(hal::as_bytes(gsa_start_of_line));
   auto end_of_line_finder = hal::stream::find(hal::as_bytes(end_of_line));
 
-  auto start_of_line_found = bytes_read_array | start_of_line_finder;
-  auto end_of_line_found = start_of_line_found | end_of_line_finder;
+  auto start_of_line_found = p_data | start_of_line_finder;
+  auto remaining_data = start_of_line_found | end_of_line_finder;
 
   std::string_view gsa_data(
     reinterpret_cast<const char*>(start_of_line_found.data()),
-    end_of_line_found.data() - start_of_line_found.data());
+    remaining_data.data() - start_of_line_found.data());
 
   int ret = sscanf(gsa_data.data(),
                    GSA_FORMAT,
@@ -198,31 +265,30 @@ hal::result<GSA_Sentence::gsa_data_t> GSA_Sentence::parse(
                    &m_gsa_data.hdop,
                    &m_gsa_data.vdop);
 
-  return hal::result<GSA_Sentence::gsa_data_t>(m_gsa_data);
+  return std::span<const hal::byte>(p_data);
 }
 
-hal::result<GSA_Sentence::gsa_data_t> GSA_Sentence::read(
-  std::span<hal::byte>& bytes_read_array)
+GSA_Sentence::gsa_data_t GSA_Sentence::read()
 {
-  auto data = HAL_CHECK(parse(bytes_read_array));
-  return hal::result<GSA_Sentence::gsa_data_t>(data);
+  return GSA_Sentence::gsa_data_t(m_gsa_data);
 }
 
-hal::result<GSV_Sentence::satellite_data_t> GSV_Sentence::parse(
-  std::span<hal::byte>& bytes_read_array)
+std::span<const hal::byte> GSV_Sentence::parse(
+  std::span<const hal::byte> p_data)
 {
   using namespace std::literals;
+  m_state = state_t::active;
 
   auto start_of_line_finder =
     hal::stream::find(hal::as_bytes(gsv_start_of_line));
   auto end_of_line_finder = hal::stream::find(hal::as_bytes(end_of_line));
 
-  auto start_of_line_found = bytes_read_array | start_of_line_finder;
-  auto end_of_line_found = start_of_line_found | end_of_line_finder;
+  auto start_of_line_found = p_data | start_of_line_finder;
+  auto remaining_data = start_of_line_found | end_of_line_finder;
 
   std::string_view gsv_data(
     reinterpret_cast<const char*>(start_of_line_found.data()),
-    end_of_line_found.data() - start_of_line_found.data());
+    remaining_data.data() - start_of_line_found.data());
 
   int ret = sscanf(gsv_data.data(),
                    GSV_FORMAT,
@@ -234,31 +300,30 @@ hal::result<GSV_Sentence::satellite_data_t> GSV_Sentence::parse(
                    &m_satellite_data.azimuth,
                    &m_satellite_data.snr);
 
-  return hal::result<GSV_Sentence::satellite_data_t>(m_satellite_data);
+  return std::span<const hal::byte>(p_data);
 }
 
-hal::result<GSV_Sentence::satellite_data_t> GSV_Sentence::read(
-  std::span<hal::byte>& bytes_read_array)
+GSV_Sentence::satellite_data_t GSV_Sentence::read()
 {
-  auto data = HAL_CHECK(parse(bytes_read_array));
-  return hal::result<GSV_Sentence::satellite_data_t>(data);
+  return GSV_Sentence::satellite_data_t(m_satellite_data);
 }
 
-hal::result<RMC_Sentence::rmc_data_t> RMC_Sentence::parse(
-  std::span<hal::byte>& bytes_read_array)
+std::span<const hal::byte> RMC_Sentence::parse(
+  std::span<const hal::byte> p_data)
 {
   using namespace std::literals;
+  m_state = state_t::active;
 
   auto start_of_line_finder =
     hal::stream::find(hal::as_bytes(rmc_start_of_line));
   auto end_of_line_finder = hal::stream::find(hal::as_bytes(end_of_line));
 
-  auto start_of_line_found = bytes_read_array | start_of_line_finder;
-  auto end_of_line_found = start_of_line_found | end_of_line_finder;
+  auto start_of_line_found = p_data | start_of_line_finder;
+  auto remaining_data = start_of_line_found | end_of_line_finder;
 
   std::string_view rmc_data(
     reinterpret_cast<const char*>(start_of_line_found.data()),
-    end_of_line_found.data() - start_of_line_found.data());
+    remaining_data.data() - start_of_line_found.data());
 
   int ret = sscanf(rmc_data.data(),
                    RMC_FORMAT,
@@ -274,14 +339,14 @@ hal::result<RMC_Sentence::rmc_data_t> RMC_Sentence::parse(
                    &m_rmc_data.magnetic_variation,
                    &m_rmc_data.magnetic_direction);
 
-  return hal::result<RMC_Sentence::rmc_data_t>(m_rmc_data);
+  m_rmc_data.reading_status = ret;
+
+  return std::span<const hal::byte>(p_data);
 }
 
-hal::result<RMC_Sentence::rmc_data_t> RMC_Sentence::read(
-  std::span<hal::byte>& bytes_read_array)
+RMC_Sentence::rmc_data_t RMC_Sentence::read()
 {
-  auto data = HAL_CHECK(parse(bytes_read_array));
-  return hal::result<RMC_Sentence::rmc_data_t>(data);
+  return RMC_Sentence::rmc_data_t(m_rmc_data);
 }
 
 }  // namespace hal::neo
