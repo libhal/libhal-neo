@@ -48,7 +48,7 @@ public:
 
   [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
   hal::result<gps_parsed_t> read_raw_gps();
-  hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& gps_data);
+  hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& p_gps_data);
   hal::result<gps_parsed_t> read();
 
 private:

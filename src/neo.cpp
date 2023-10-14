@@ -69,7 +69,7 @@ hal::result<neo_GPS::gps_parsed_t> neo_GPS::read_raw_gps()
         &m_gps_data.time_since_last_dgps_update,
         &m_gps_data.dgps_station_id_checksum);
 
-        m_gps_data.is_locked = (ret < 10) ? false : true;
+        m_gps_data.is_locked = (ret < 7) ? false : true;
 
     return hal::result<neo_GPS::gps_parsed_t>(m_gps_data);
 }
