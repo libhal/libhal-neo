@@ -56,7 +56,7 @@ hal::result<hardware_map> initialize_platform()
   static auto uart3 = HAL_CHECK(hal::lpc40::uart::get(3,
                                                       uart3_buffer,
                                                       hal::serial::settings{
-                                                        .baud_rate = 9600,
+                                                        .baud_rate = 38400,
                                                       }));
 
   return hardware_map{

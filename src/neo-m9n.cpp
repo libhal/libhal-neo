@@ -53,7 +53,7 @@ hal::result<neo_m9n::gps_parsed_t> neo_m9n::read_raw_gps()
     end_of_line_found.data() - start_of_line_found.data());
 
   int ret = sscanf(gps_data.data(),
-                   ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c,,%s,",
+                   ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c,%f,%c,,%s",
                    &m_gps_data.time,
                    &m_gps_data.latitude,
                    &m_gps_data.latitude_direction,
@@ -66,8 +66,7 @@ hal::result<neo_m9n::gps_parsed_t> neo_m9n::read_raw_gps()
                    &m_gps_data.altitude_units,
                    &m_gps_data.height_of_geoid,
                    &m_gps_data.height_of_geoid_units,
-                   &m_gps_data.time_since_last_dgps_update,
-                   &m_gps_data.dgps_station_id_checksum);
+                   m_gps_data.dgps_station_id_checksum);
 
   m_gps_data.is_locked = (ret < 7) ? false : true;
 

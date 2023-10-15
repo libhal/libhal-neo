@@ -41,18 +41,24 @@ hal::status application(hardware_map& p_map)
                  "GPS not locked. Relocating for a better signal might help. "
                  "Locking may take up to 3 minutes.\n");
     } else {
-      hal::print(
-        console,
-        "\n=================== GPS Coordinate Data ===================\n");
-      hal::print<128>(console,
-                      "Time: %f\nLatitude: %f\nLongitude: %f\nNumber of "
-                      "satellites seen: %d\nAltitude: %f meters",
-                      GPS.time,
-                      GPS.latitude,
-                      GPS.longitude,
-                      GPS.satellites_used,
-                      GPS.altitude);
+      break;
     }
+  }
+
+  while (true) {
+    hal::delay(clock, 1000ms);
+    auto GPS = HAL_CHECK(neoGPS.read());
+    hal::print(
+      console,
+      "\n=================== GPS Coordinate Data ===================\n");
+    hal::print<128>(console,
+                    "Time: %f\nLatitude: %f\nLongitude: %f\nNumber of "
+                    "satellites seen: %d\nAltitude: %f meters",
+                    GPS.time,
+                    GPS.latitude,
+                    GPS.longitude,
+                    GPS.satellites_used,
+                    GPS.altitude);
   }
 
   return hal::success();
