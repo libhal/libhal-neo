@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <libhal-neo/neo.hpp>
+#include <libhal-neo/neo-m9n.hpp>
 
 #include <boost/ut.hpp>
 
