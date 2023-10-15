@@ -23,26 +23,9 @@ This project is not an official Google project. It is not supported by
 Google and Google specifically disclaims all warranties as to its quality,
 merchantability, or fitness for a particular purpose.
 
-**AFTER CLONING DELETE THE SECTION BELOW AND ADD YOUR OWN CONTENT**.
-
-## Making a new device driver
-
-To make your own libhal library:
-
-1. press the green "Use this Template" button then
-2. press the "Create a new repository".
-3. Name it `libhal-<insert_device_name>` and replace `<insert_device_name>` with
-  the name of the device's family. For exmaple, if you want to make a library
-  for the MPU series of IMUs then call it `libhal-mpu`.
-4. Choose where to put the repo under,
-5. Go to `settings` > `Pages` > `Build and deployment` > `Source` and set the
-  source to `Github Actions`.
-6. Go to `Pull Requests` and merge the library rename pull request.
-7. Done!
-
 ## About the libhal-device template
 
-The libhal-neo repository is a template for creating device libraries in
+The libhal-__device__ repository is a template for creating device libraries in
 the libhal ecosystem. It provides a structured layout and a set of files to help
 you get started with creating your own device library.
 
@@ -81,7 +64,7 @@ the datasheet (and potentially mirrors of it) is an acceptable alternative.
 This directory contains demonstration applications showing how to use the device
 library. It includes:
 
-- `applications/neo.cpp`: A sample application demonstrating usage of the
+- `applications/neo-m9n.cpp`: A sample application demonstrating usage of the
   device library.
 - `hardware_map.hpp`: A header file defining the hardware map for the demo
   applications.
@@ -89,16 +72,16 @@ library. It includes:
 - `platforms/lpc4074.cpp` and `platforms/lpc4078.cpp`: Platform-specific
   implementations for the demo applications.
 
-## include/libhal-neo
+## include/libhal-mpl
 
 This directory contains the header files for the device library. It currently
-includes `neo.hpp`, which is a placeholder for the main header file of
+includes `neo-m9n.hpp`, which is a placeholder for the main header file of
 your device library.
 
 ## src
 
 This directory contains the source files for the device library. It currently
-includes `neo.cpp`, which is a placeholder for the main source file of
+includes `neo-m9n.cpp`, which is a placeholder for the main source file of
 your device library.
 
 ## test_package
