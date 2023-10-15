@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #pragma once
 
 namespace hal::neo {
 
 using namespace std::literals;
 
-    constexpr auto start_of_line = "$GNGGA,"sv;
-    constexpr auto end_of_line = "\r\n"sv;
-    constexpr auto comma_delimiter = ","sv;
+constexpr auto start_of_line = "$GNGGA,"sv;
+constexpr auto end_of_line = "\r\n"sv;
+constexpr auto comma_delimiter = ","sv;
 
 }  // namespace hal::neo
