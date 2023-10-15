@@ -24,7 +24,7 @@
 #include <libhal/serial.hpp>
 
 namespace hal::neo {
-class neo_GPS
+class neo_m9n
 {
 public:
   struct gps_parsed_t
@@ -46,13 +46,13 @@ public:
     char dgps_station_id_checksum[10];
   };
 
-  [[nodiscard]] static result<neo_GPS> create(hal::serial& p_serial);
+  [[nodiscard]] static result<neo_m9n> create(hal::serial& p_serial);
   hal::result<gps_parsed_t> read_raw_gps();
   hal::result<gps_parsed_t> calculate_lon_lat(const gps_parsed_t& p_gps_data);
   hal::result<gps_parsed_t> read();
 
 private:
-  neo_GPS(hal::serial& p_serial);
+  neo_m9n(hal::serial& p_serial);
   hal::serial* m_serial;
   std::array<hal::byte, 512> m_gps_buffer;
   gps_parsed_t m_gps_data;

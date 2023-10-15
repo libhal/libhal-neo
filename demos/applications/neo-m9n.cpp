@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "../hardware_map.hpp"
-#include <libhal-neo/neo.hpp>
+#include <libhal-neo/neo-m9n.hpp>
 #include <libhal-util/serial.hpp>
 #include <libhal-util/steady_clock.hpp>
 
@@ -27,7 +27,7 @@ hal::status application(hardware_map& p_map)
   auto& gps = *p_map.gps;
 
   hal::print(console, "Initializing GPS...\n");
-  auto neoGPS = HAL_CHECK(hal::neo::neo_GPS::create(gps));
+  auto neoGPS = HAL_CHECK(hal::neo::neo_m9n::create(gps));
   hal::print(console, "GPS created! \n");
   hal::print(
     console,
@@ -37,7 +37,9 @@ hal::status application(hardware_map& p_map)
     hal::delay(clock, 1000ms);
     auto GPS = HAL_CHECK(neoGPS.read());
     if (!GPS.is_locked) {
-      hal::print(console, "GPS not locked. Relocating for a better signal might help. Locking may take up to 3 minutes.\n");
+      hal::print(console,
+                 "GPS not locked. Relocating for a better signal might help. "
+                 "Locking may take up to 3 minutes.\n");
     } else {
       hal::print(
         console,

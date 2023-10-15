@@ -19,7 +19,7 @@ project(libhal-neo VERSION 0.0.1 LANGUAGES CXX)
 find_package(libhal REQUIRED CONFIG)
 find_package(libhal-util REQUIRED CONFIG)
 
-add_library(libhal-neo src/neo.cpp)
+add_library(libhal-neo src/neo-m9n.cpp)
 
 target_include_directories(libhal-neo PUBLIC include)
 target_compile_features(libhal-neo PRIVATE cxx_std_20)
