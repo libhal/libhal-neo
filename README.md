@@ -25,7 +25,7 @@ merchantability, or fitness for a particular purpose.
 
 ## About the libhal-device template
 
-The libhal-__device__ repository is a template for creating device libraries in
+The libhal-neo repository is a template for creating device libraries in
 the libhal ecosystem. It provides a structured layout and a set of files to help
 you get started with creating your own device library.
 
@@ -72,7 +72,7 @@ library. It includes:
 - `platforms/lpc4074.cpp` and `platforms/lpc4078.cpp`: Platform-specific
   implementations for the demo applications.
 
-## include/libhal-mpl
+## include/libhal-neo
 
 This directory contains the header files for the device library. It currently
 includes `neo-m9n.hpp`, which is a placeholder for the main header file of
