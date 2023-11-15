@@ -16,6 +16,10 @@ name: ✅ CI
 
 on:
   workflow_dispatch:
+  release:
+    types:
+      - published
+      - deleted
   pull_request:
   push:
     branches:
@@ -26,8 +30,6 @@ on:
 jobs:
   ci:
     uses: libhal/ci/.github/workflows/library.yml@4.x.y
-    with:
-      coverage: true
     secrets: inherit
   deploy:
     uses: libhal/ci/.github/workflows/deploy.yml@4.x.y
@@ -46,5 +48,3 @@ jobs:
       processor_profile: https://github.com/libhal/libhal-armcortex.git
       platform_profile: https://github.com/libhal/libhal-lpc40.git
     secrets: inherit
-
-  # Add more build_<platform> blocks below for each platform you support
