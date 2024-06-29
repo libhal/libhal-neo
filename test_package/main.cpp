@@ -56,7 +56,7 @@ extern "C"
   }
 
   int _write_r([[maybe_unused]] int file,
-               [[maybe_unused]] const char* ptr,
+               [[maybe_unused]] char const* ptr,
                int length)
   {
     return length;
