@@ -49,7 +49,7 @@ hal::result<neo_m9n::gps_parsed_t> neo_m9n::read_raw_gps()
   auto end_of_line_found = start_of_line_found | end_of_line_finder;
 
   std::string_view gps_data(
-    reinterpret_cast<const char*>(start_of_line_found.data()),
+    reinterpret_cast<char const*>(start_of_line_found.data()),
     end_of_line_found.data() - start_of_line_found.data());
 
   int ret = sscanf(gps_data.data(),
@@ -74,7 +74,7 @@ hal::result<neo_m9n::gps_parsed_t> neo_m9n::read_raw_gps()
 }
 
 hal::result<neo_m9n::gps_parsed_t> neo_m9n::calculate_lon_lat(
-  const neo_m9n::gps_parsed_t& p_gps_data)
+  neo_m9n::gps_parsed_t const& p_gps_data)
 {
 
   neo_m9n::gps_parsed_t modified_data = p_gps_data;
